@@ -99,7 +99,7 @@ def get_price(url: str, xpath: str) -> Optional[float]:
     if price is not None:
         return price
 
-    print("Trying Selenium...")
+    logger.info("Trying Selenium...")
     options = webdriver.ChromeOptions()
     options.add_argument("--headless")
     options.add_argument("--disable-blink-features=AutomationControlled")
