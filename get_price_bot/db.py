@@ -1,22 +1,25 @@
-import sqlite3
+import aiosqlite
 
 
-def insert_data_to_db(data):
-    """Функция для вставки данных в базу данных SQLite."""
-    conn = sqlite3.connect('product_prices.db')
-    cursor = conn.cursor()
+async def insert_data_to_db(data: list[tuple]) -> None:
+    """Функция для асинхронной вставки данных в базу данных SQLite."""
+    async with aiosqlite.connect('products.db') as conn:
+        async with conn.cursor() as cursor:
+            # Создание таблицы, если она не существует
+            await cursor.execute('''
+            CREATE TABLE IF NOT EXISTS products (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT,
+                url TEXT,
+                xpath TEXT,
+                price REAL
+            )
+            ''')
 
-    # Создание таблицы (если она не существует)
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS products (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT,
-        url TEXT,
-        xpath TEXT,
-        price REAL
-    )
-    ''')
+            # Вставка данных
+            await cursor.executemany('''
+            INSERT INTO products (title, url, xpath, price)
+            VALUES (?, ?, ?, ?)
+            ''', data)
 
-    cursor.executemany('''INSERT INTO products (title, url, xpath, price) VALUES (?, ?, ?, ?)''', data)
-    conn.commit()
-    conn.close()
+            await conn.commit()
