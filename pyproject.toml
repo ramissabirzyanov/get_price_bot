@@ -12,6 +12,8 @@ aiohttp = "^3.11.13"
 selenium = "^4.29.0"
 webdriver-manager = "^4.0.2"
 flake8 = "^7.1.2"
+python-telegram-bot = "^22.0"
+pandas = "^2.2.3"
 
 
 [build-system]

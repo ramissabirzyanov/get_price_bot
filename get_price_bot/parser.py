@@ -110,10 +110,3 @@ def get_price(url: str, xpath: str) -> Optional[float]:
 
     price = fetch_price_selenium(driver, url, xpath)
     return price
-
-
-url = "https://street-beat.ru/d/krossovki-adidas-originals-b75806/"
-xpath = '//span[contains(@class, "price-tag__default")]'
-
-price = get_price(url, xpath)
-logger.info(f"Цена: {price}")
