@@ -19,7 +19,7 @@ services:
     command: poetry run python -u get_price_bot/bot.py
 
   selenium:
-    image: selenium/standalone-chrome:latest
+    image: seleniarm/standalone-chromium
     container_name: selenium-chrome
     ports:
       - "4444:4444"
