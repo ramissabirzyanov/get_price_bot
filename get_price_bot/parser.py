@@ -64,9 +64,10 @@ def get_selenium_driver() -> WebDriver:
     return driver
 
 
-def fetch_price_selenium(driver: WebDriver, url: str, xpath: str) -> Optional[float]:
+def fetch_price_selenium(url: str, xpath: str) -> Optional[float]:
     """Забирает цену с динамических сайтов с помощью Selenium"""
     try:
+        driver = get_selenium_driver()
         driver.get(url)
         logger.info("🕒 loading the element...")
         price_element = WebDriverWait(driver, 10).until(
@@ -82,22 +83,13 @@ def fetch_price_selenium(driver: WebDriver, url: str, xpath: str) -> Optional[fl
             ).strip()
             return clean_price(price_text)
         return clean_price(price_text)
-
-    except TimeoutException:
-        logger.error(f"Time is over. Check yout xpath: {xpath}")
+    
+    except (TimeoutException, NoSuchElementException, WebDriverException) as e:
+        logger.error(f"Selenium ошибка: {str(e)}")
         return None
 
-    except NoSuchElementException:
-        logger.error("Can't find the element.")
-        return None
-
-    except WebDriverException as e:
-        logger.error(f"WebDriver Error: {str(e)}")
-        return None
-
-    except Exception as e:
-        logger.critical(f"Some mysterious error happened: {str(e)}")
-        return None
+    finally:
+        driver.quit()
 
 
 def fetch_price_static(url: str, xpath: str) -> Optional[float]:
@@ -133,7 +125,5 @@ def get_price(url: str, xpath: str) -> Optional[float]:
         return price
 
     logger.info("Trying Selenium...")
-    driver = get_selenium_driver()
-    price = fetch_price_selenium(driver, url, xpath)
-    driver.quit()
+    price = fetch_price_selenium(url, xpath)
     return price
