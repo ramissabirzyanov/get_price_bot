@@ -16,4 +16,5 @@ RUN poetry install --no-interaction --no-ansi --no-root
 
 COPY . /bot
 
-CMD ["python", "bot.py"]
+CMD ["python", "get_price_bot/bot.py"]
+
