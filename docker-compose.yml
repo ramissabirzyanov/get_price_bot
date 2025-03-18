@@ -19,7 +19,10 @@ services:
     command: poetry run python -u get_price_bot/bot.py
 
   selenium:
-    image: seleniarm/standalone-chromium
+    # Если контейнер запускается на ARM (например, Apple M1/M2), используйте образ seleniarm
+    # Если контейнер запускается на x86_64 (Intel/AMD), используйте selenium/standalone-chrome:latest
+    image: seleniarm/standalone-chromium  # для ARM
+    # image: selenium/standalone-chrome:latest  # для x86_64 (Intel/AMD)
     container_name: selenium-chrome
     ports:
       - "4444:4444"
