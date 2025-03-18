@@ -5,7 +5,6 @@ import os
 from lxml import html
 from typing import Optional
 
-
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
@@ -46,16 +45,22 @@ def get_selenium_driver() -> WebDriver:
     options.add_argument("--disable-dev-shm-usage")
 
     # для запуска в контейнере:
+    selenium_url = os.getenv("SELENIUM_URL")
+
+    if not selenium_url:
+        raise ValueError(
+            "SELENIUM_URL не задан. Для работы в контейнере укажите URL Selenium Hub.\n"
+            "Пример: http://selenium:4444/wd/hub"
+        )
     driver = webdriver.Remote(
-        command_executor=os.getenv("SELENIUM_URL", "http://localhost:4444/wd/hub"),
+        command_executor=selenium_url,
         options=options
     )
-    # для локального запуска используется этот driver:
+    # для локальной разработки используется driver:
     # driver = webdriver.Chrome(
     #     service=Service(ChromeDriverManager().install()),
     #     options=options
     # )
-
     return driver
 
 
@@ -64,7 +69,7 @@ def fetch_price_selenium(driver: WebDriver, url: str, xpath: str) -> Optional[fl
     try:
         driver.get(url)
         logger.info("🕒 loading the element...")
-        price_element = WebDriverWait(driver, 20).until(
+        price_element = WebDriverWait(driver, 10).until(
             ec.presence_of_element_located((By.XPATH, xpath))
         )
         price_text = price_element.text.strip()

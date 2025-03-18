@@ -20,7 +20,7 @@ services:
 
   selenium:
     # Если контейнер запускается на ARM (например, Apple M1/M2), используйте образ seleniarm
-    # Если контейнер запускается на x86_64 (Intel/AMD), используйте selenium/standalone-chrome:latest
+    # Если контейнер запускается на x86_64 (Intel/AMD), используйте selenium
     image: seleniarm/standalone-chromium  # для ARM
     # image: selenium/standalone-chrome:latest  # для x86_64 (Intel/AMD)
     container_name: selenium-chrome

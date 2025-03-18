@@ -1,18 +1,32 @@
-import pandas as pd
-from get_price_bot.parser import get_price, logger
-from get_price_bot.db import insert_data_to_db, get_avg_price_from_last_file
-from telegram import Update
-from telegram.error import TelegramError
-from telegram.ext import CommandHandler, MessageHandler, filters, ContextTypes, ApplicationBuilder
 import os
+
+from get_price_bot.parser import logger
+from get_price_bot.utils import (
+    read_excel_file,
+    get_data_and_insert_to_db,
+    avg_price_from_last_file
+)
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.error import TelegramError
+from telegram.ext import (
+    CommandHandler,
+    MessageHandler,
+    filters,
+    ContextTypes,
+    ApplicationBuilder,
+    CallbackQueryHandler
+)
 
 
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 
 
 async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Обрабатывает полученный файл Excel."""
-
+    """
+    Обрабатывает полученный файл Excel.
+    Сохраняет данные в БД.
+    Выводит средний прайс.
+    """
     try:
         await update.message.reply_text("Обработка файла. Это может занять несколько минут...")
 
@@ -21,39 +35,25 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             return
 
         os.makedirs('./uploaded_files', exist_ok=True)
-
         uploaded_file = update.message.document
         file = await context.bot.get_file(uploaded_file.file_id)
         file_path = f'./uploaded_files/{file.file_id}.xlsx'
-
         try:
             await file.download_to_drive(file_path)
         except TelegramError as e:
             logger.error(f"Ошибка при загрузке файла: {str(e)}")
             await update.message.reply_text("Ошибка при загрузке файла.")
             return
-
-        df = pd.read_excel(file_path, engine="openpyxl")
-
-        required_columns = ['title', 'url', 'xpath']
-        if not all(col in df.columns for col in required_columns):
-            await update.message.reply_text(
-                "Ошибка! Файл должен содержать колонки: title, url, xpath."
-            )
+        try:
+            df = read_excel_file(file_path)
+            table_str = df.to_string(index=False)
+        except ValueError as e:
+            await update.message.reply_text(e)
             return
 
-        data_to_insert = []
-        for row in df.itertuples(index=False):
-            title = row.title
-            url = row.url
-            xpath = row.xpath
-            price = get_price(url, xpath)
-            data_to_insert.append((title, url, xpath, price))
-
-        await insert_data_to_db(data_to_insert)
-        await update.message.reply_text("Файл успешно загружен и данные добавлены в базу данных.")
-        avg_price = await get_avg_price_from_last_file()
-        await update.message.reply_text(f"Средняя цена товара из таблицы: {avg_price}")
+        await update.message.reply_text(f"Cодержимое таблицы:\n\n{table_str}")
+        await update.message.reply_text(await get_data_and_insert_to_db(df))
+        await update.message.reply_text(await avg_price_from_last_file())
 
     except TelegramError as e:
         logger.error(f"Ошибка обработки файла: {str(e)}")
@@ -67,6 +67,12 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Отправляет сообщение пользователю с инструкциями по загрузке файла."""
+
+    keyboard = [
+        [InlineKeyboardButton("Загрузить файл", callback_data='upload_file')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="Привет! Пожалуйста, загрузите файл Excel с информацией о сайтах для парсинга.\n\n"
@@ -74,8 +80,22 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "- `title`\n"
         "- `url`\n"
         "- `xpath`",
-        parse_mode="Markdown"
+        parse_mode="Markdown",
+        reply_markup=reply_markup
     )
+
+
+async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Обрабатывает нажатие кнопки."""
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == 'upload_file':
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="Пожалуйста, нажмите 📎 и выберите файл для загрузки Excel файла."
+        )
+        context.user_data['awaiting_file'] = True
 
 
 if __name__ == "__main__":
@@ -84,4 +104,5 @@ if __name__ == "__main__":
     start_handler = CommandHandler("start", start)
     application.add_handler(start_handler)
     application.add_handler(MessageHandler(filters.Document.ALL, handle_file))
+    application.add_handler(CallbackQueryHandler(button))
     application.run_polling()
