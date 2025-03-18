@@ -31,7 +31,7 @@
 git clone https://github.com/ramissabirzyanov/get_price_bot
 cd get_price_bot
 ```
-- Создание файл .env в корне проекта. И установите в нём переменные на основе примера (.env.example).
+- Создайте файл .env в корне проекта. И установите в нём переменные на основе примера (.env.example).
 ```bash
 touch .env
 ```
