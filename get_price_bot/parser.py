@@ -1,16 +1,19 @@
 import logging
 import re
 import requests
+import os
 from lxml import html
 from typing import Optional
 
+
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
-from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.remote.webdriver import WebDriver
+# from selenium.webdriver.chrome.service import Service
+# from webdriver_manager.chrome import ChromeDriverManager
 
 
 logging.basicConfig(
@@ -32,7 +35,31 @@ def clean_price(price: str) -> Optional[float]:
         return None
 
 
-def fetch_price_selenium(driver: webdriver.Chrome, url: str, xpath: str) -> Optional[float]:
+def get_selenium_driver() -> WebDriver:
+    """Подключаемся к контейнеру Selenium через WebDriver."""
+
+    options = webdriver.ChromeOptions()
+    options.add_argument("--headless")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_argument("--disable-dev-shm-usage")
+
+    # для запуска в контейнере:
+    driver = webdriver.Remote(
+        command_executor=os.getenv("SELENIUM_URL", "http://localhost:4444/wd/hub"),
+        options=options
+    )
+    # для локального запуска используется этот driver:
+    # driver = webdriver.Chrome(
+    #     service=Service(ChromeDriverManager().install()),
+    #     options=options
+    # )
+
+    return driver
+
+
+def fetch_price_selenium(driver: WebDriver, url: str, xpath: str) -> Optional[float]:
     """Забирает цену с динамических сайтов с помощью Selenium"""
     try:
         driver.get(url)
@@ -67,9 +94,6 @@ def fetch_price_selenium(driver: webdriver.Chrome, url: str, xpath: str) -> Opti
         logger.critical(f"Some mysterious error happened: {str(e)}")
         return None
 
-    finally:
-        driver.quit()
-
 
 def fetch_price_static(url: str, xpath: str) -> Optional[float]:
     """Забирает цену с статических сайтов с использованием requests и lxml"""
@@ -94,19 +118,17 @@ def fetch_price_static(url: str, xpath: str) -> Optional[float]:
 
 
 def get_price(url: str, xpath: str) -> Optional[float]:
+    """
+    Получает цену товара.
+    Какой парсер будет использоваться зависит от сайта
+    """
     price = fetch_price_static(url, xpath)
 
     if price is not None:
         return price
 
     logger.info("Trying Selenium...")
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless")
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-
+    driver = get_selenium_driver()
     price = fetch_price_selenium(driver, url, xpath)
+    driver.quit()
     return price

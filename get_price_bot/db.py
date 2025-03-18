@@ -18,7 +18,9 @@ async def insert_data_to_db(data: list[tuple]) -> None:
             ''')
             await cursor.execute("SELECT COALESCE(MAX(batch_id), 0) + 1 FROM products")
             new_batch_id = (await cursor.fetchone())[0]
-            data_with_batch = [(title, url, xpath, price, new_batch_id) for title, url, xpath, price in data]
+            data_with_batch = [
+                (title, url, xpath, price, new_batch_id) for title, url, xpath, price in data
+            ]
             await cursor.executemany('''
             INSERT INTO products (title, url, xpath, price, batch_id)
             VALUES (?, ?, ?, ?, ?)
@@ -38,7 +40,9 @@ async def get_avg_price_from_last_file() -> float:
             return None
 
         async with conn.cursor() as cursor:
-            await cursor.execute("SELECT AVG(price) FROM products WHERE batch_id = ?", (last_batch[0],))
+            await cursor.execute(
+                "SELECT AVG(price) FROM products WHERE batch_id = ?", (last_batch[0],)
+            )
             avg_price = await cursor.fetchone()
 
         return avg_price[0] if avg_price else None

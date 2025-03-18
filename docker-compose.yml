@@ -12,3 +12,15 @@ services:
       - .:/bot
     ports:
       - "8000:8000"
+    depends_on:
+      - selenium
+    environment:
+      - SELENIUM_URL=http://selenium:4444/wd/hub
+    command: poetry run python -u get_price_bot/bot.py
+
+  selenium:
+    image: selenium/standalone-chrome:latest
+    container_name: selenium-chrome
+    ports:
+      - "4444:4444"
+    restart: always

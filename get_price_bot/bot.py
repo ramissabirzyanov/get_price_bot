@@ -37,7 +37,9 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
         required_columns = ['title', 'url', 'xpath']
         if not all(col in df.columns for col in required_columns):
-            await update.message.reply_text("Ошибка! Файл должен содержать колонки: title, url, xpath.")
+            await update.message.reply_text(
+                "Ошибка! Файл должен содержать колонки: title, url, xpath."
+            )
             return
 
         data_to_insert = []
@@ -52,7 +54,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         await update.message.reply_text("Файл успешно загружен и данные добавлены в базу данных.")
         avg_price = await get_avg_price_from_last_file()
         await update.message.reply_text(f"Средняя цена товара из таблицы: {avg_price}")
-    
+
     except TelegramError as e:
         logger.error(f"Ошибка обработки файла: {str(e)}")
         await update.message.reply_text("Произошла ошибка при обработке файла")
