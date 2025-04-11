@@ -1,9 +1,12 @@
 import logging
 import re
-import requests
 import os
 from lxml import html
 from typing import Optional
+import asyncio
+import aiohttp
+from concurrent.futures import ThreadPoolExecutor
+
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -11,8 +14,8 @@ from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
 from selenium.webdriver.remote.webdriver import WebDriver
-# from selenium.webdriver.chrome.service import Service
-# from webdriver_manager.chrome import ChromeDriverManager
+# from selenium.webdriver.chrome.service import Service  
+# from webdriver_manager.chrome import ChromeDriverManager Для локальной разработки
 
 
 logging.basicConfig(
@@ -69,7 +72,7 @@ def fetch_price_selenium(url: str, xpath: str) -> Optional[float]:
     try:
         driver = get_selenium_driver()
         driver.get(url)
-        logger.info("🕒 loading the element...")
+        logger.info("loading the element...")
         price_element = WebDriverWait(driver, 10).until(
             ec.presence_of_element_located((By.XPATH, xpath))
         )
@@ -89,23 +92,25 @@ def fetch_price_selenium(url: str, xpath: str) -> Optional[float]:
         return None
 
     finally:
-        driver.quit()
+        if driver:
+            driver.quit()
 
 
-def fetch_price_static(url: str, xpath: str) -> Optional[float]:
+async def fetch_price_static(url: str, xpath: str) -> Optional[float]:
     """Забирает цену с статических сайтов с использованием requests и lxml"""
     try:
-        response = requests.get(url, timeout=5)
-        response.raise_for_status()
-        page_content = response.text
-        tree = html.fromstring(page_content)
-        prices = tree.xpath(xpath)
-        if prices:
-            price = prices[0].text_content().strip()
-            return clean_price(price)
-        return None
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=5) as response:
+                response.raise_for_status()
+                page_content = await response.text
+                tree = html.fromstring(page_content)
+                prices = tree.xpath(xpath)
+                if prices:
+                    price = prices[0].text_content().strip()
+                    return clean_price(price)
+                return None
 
-    except requests.RequestException as e:
+    except aiohttp.ClientError as e:
         logger.error(f"HTTP request error: {e}")
         return None
 
@@ -114,16 +119,17 @@ def fetch_price_static(url: str, xpath: str) -> Optional[float]:
         return None
 
 
-def get_price(url: str, xpath: str) -> Optional[float]:
+async def get_price(url: str, xpath: str) -> Optional[float]:
     """
     Получает цену товара.
     Какой парсер будет использоваться зависит от сайта
     """
-    price = fetch_price_static(url, xpath)
+    price = await fetch_price_static(url, xpath)
 
     if price is not None:
         return price
-
-    logger.info("Trying Selenium...")
-    price = fetch_price_selenium(url, xpath)
-    return price
+    loop = asyncio.get_running_loop()
+    with ThreadPoolExecutor() as executor:
+        logger.info("Trying Selenium...")
+        price = await loop.run_in_executor(executor, fetch_price_selenium, url, xpath)
+        return price

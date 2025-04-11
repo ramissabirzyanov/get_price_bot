@@ -18,7 +18,7 @@ async def get_data_and_insert_to_db(df: pandas.DataFrame) -> str:
         title = row.title
         url = row.url
         xpath = row.xpath
-        price = get_price(url, xpath)
+        price = await get_price(url, xpath)
         data_to_insert.append((title, url, xpath, price))
 
     await insert_data_to_db(data_to_insert)
