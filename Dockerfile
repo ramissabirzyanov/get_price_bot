@@ -10,8 +10,8 @@ ENV POETRY_VIRTUALENVS_CREATE=false
 
 WORKDIR /bot
 
-COPY pyproject.toml poetry.lock ./
+COPY . .
 
 RUN poetry install --no-interaction --no-ansi --no-root
 
-COPY . /bot
+CMD ["poetry", "run", "python", "-u", "get_price_bot/bot.py"]

@@ -41,7 +41,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         try:
             await file.download_to_drive(file_path)
         except TelegramError as e:
-            logger.error(f"Ошибка при загрузке файла: {str(e)}")
+            logger.error(f"Ошибка при загрузке файла: {e}")
             await update.message.reply_text("Ошибка при загрузке файла.")
             return
         try:
@@ -52,15 +52,20 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             return
 
         await update.message.reply_text(f"Cодержимое таблицы:\n\n{table_str}")
+        await update.message.reply_text("Получаем данные цен, подождите пожалуйста")
         await update.message.reply_text(await get_data_and_insert_to_db(df))
         await update.message.reply_text(await avg_price_from_last_file())
 
     except TelegramError as e:
-        logger.error(f"Ошибка обработки файла: {str(e)}")
+        logger.error(f"Ошибка обработки файла: {e}")
         await update.message.reply_text("Произошла ошибка при обработке файла")
         return
-    finally:
+    except Exception as e:
+        logger.critical(f"Неизвестная ошибка при чтении Excel: {e}")
+        await update.message.reply_text("Произошла неизвестная ошибка, попробуйте позже")
+        return
 
+    finally:
         if os.path.exists(file_path):
             os.remove(file_path)
 

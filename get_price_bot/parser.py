@@ -84,7 +84,6 @@ def fetch_price_selenium(url: str, xpath: str) -> Optional[float]:
                 "return arguments[0].textContent;",
                 price_element
             ).strip()
-            return clean_price(price_text)
         return clean_price(price_text)
     
     except (TimeoutException, NoSuchElementException, WebDriverException) as e:
@@ -102,21 +101,17 @@ async def fetch_price_static(url: str, xpath: str) -> Optional[float]:
         async with aiohttp.ClientSession() as session:
             async with session.get(url, timeout=5) as response:
                 response.raise_for_status()
-                page_content = await response.text
-                tree = html.fromstring(page_content)
-                prices = tree.xpath(xpath)
-                if prices:
-                    price = prices[0].text_content().strip()
-                    return clean_price(price)
-                return None
-
+                page_content = await response.text()
     except aiohttp.ClientError as e:
         logger.error(f"HTTP request error: {e}")
         return None
 
-    except Exception as e:
-        logger.critical(f"Some mysterious error happened: {str(e)}")
-        return None
+    tree = html.fromstring(page_content)
+    prices = tree.xpath(xpath)
+    if prices:
+        price = prices[0].text_content().strip()
+        return clean_price(price)
+    return None
 
 
 async def get_price(url: str, xpath: str) -> Optional[float]:
@@ -129,7 +124,10 @@ async def get_price(url: str, xpath: str) -> Optional[float]:
     if price is not None:
         return price
     loop = asyncio.get_running_loop()
-    with ThreadPoolExecutor() as executor:
-        logger.info("Trying Selenium...")
-        price = await loop.run_in_executor(executor, fetch_price_selenium, url, xpath)
-        return price
+    # with ThreadPoolExecutor() as executor:
+    #     logger.info("Trying Selenium...")
+    #     price = await loop.run_in_executor(executor, fetch_price_selenium, url, xpath)
+    #     return price
+    loop = asyncio.get_running_loop()
+    price = await loop.run_in_executor(None, fetch_price_selenium, url, xpath)
+    return price

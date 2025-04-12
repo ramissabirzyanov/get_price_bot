@@ -16,7 +16,6 @@ services:
       - selenium
     environment:
       - SELENIUM_URL=http://selenium:4444/wd/hub
-    command: poetry run python -u get_price_bot/bot.py
 
   selenium:
     # Если контейнер запускается на ARM (например, Apple M1/M2), используйте образ seleniarm
