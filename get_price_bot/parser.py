@@ -124,5 +124,6 @@ async def get_price(url: str, xpath: str) -> Optional[float]:
     if price is not None:
         return price
     loop = asyncio.get_running_loop()
+    logger.info("Trying Selenium...")
     price = await loop.run_in_executor(None, fetch_price_selenium, url, xpath)
     return price
